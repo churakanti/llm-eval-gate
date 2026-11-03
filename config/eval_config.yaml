@@ -2,7 +2,7 @@
 # and changing a threshold is itself reviewed like code.
 
 dataset: data/golden_set.jsonl
-prompt: prompts/triage_v1.txt
+prompt: prompts/triage_v0_bad.txt
 
 provider:
   name: ollama            # mock | ollama | gemini | http   (env EVAL_PROVIDER overrides)
