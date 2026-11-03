@@ -1,0 +1,42 @@
+# Eval gate configuration. Every value here can be changed in a pull request,
+# and changing a threshold is itself reviewed like code.
+
+dataset: data/golden_set.jsonl
+prompt: prompts/triage_v1.txt
+
+provider:
+  name: ollama            # mock | ollama | gemini | http   (env EVAL_PROVIDER overrides)
+  ollama:
+    base_url: http://localhost:11434   # env OLLAMA_BASE_URL overrides (docker-compose sets it)
+    model: qwen2.5:1.5b                # env OLLAMA_MODEL overrides; ~1 GB, runs on CPU
+    timeout_s: 120
+    temperature: 0.0
+    seed: 42
+  gemini:                 # optional: Google Gemini free tier, needs GEMINI_API_KEY
+    model: gemini-2.5-flash
+    api_key_env: GEMINI_API_KEY
+    min_interval_s: 4.5   # stay under free-tier requests-per-minute limits
+  http:                   # optional: your deployed Project 2 FastAPI agent
+    url: http://localhost:8000/triage
+    timeout_s: 60
+
+labels:
+  categories: [Technical issue, Billing inquiry, Product inquiry, Refund request, Cancellation request]
+  priorities: [Low, Medium, High, Critical]   # ordered lowest -> highest
+
+# Absolute quality bar. A run below any of these fails the gate.
+# latency_* values are MAXIMUMS; all others are MINIMUMS.
+thresholds:
+  category_accuracy: 0.70
+  category_macro_f1: 0.65
+  priority_accuracy: 0.45
+  urgent_recall: 0.60          # of High/Critical tickets, share predicted High/Critical
+  valid_output_rate: 0.95      # share of outputs that parsed into allowed labels
+  latency_p95_s: 30.0
+
+# Regression check: fail if a tracked metric drops more than max_drop
+# below the committed baseline (only when the baseline used the same model).
+regression:
+  baseline_path: baseline/baseline_metrics.json
+  max_drop: 0.05
+  metrics: [category_accuracy, category_macro_f1, priority_accuracy, urgent_recall, valid_output_rate]

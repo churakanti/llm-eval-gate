@@ -1,0 +1,42 @@
+# Full pipeline in containers:  docker compose up --build --abort-on-container-exit --exit-code-from evalgate
+#   ollama      serves the local model
+#   model-pull  one-shot job that downloads the model into the shared volume
+#   evalgate    runs the eval suite + gate; reports land in ./reports on your machine
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  model-pull:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen2.5:1.5b}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  evalgate:
+    build: .
+    environment:
+      EVAL_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+    volumes:
+      - ./reports:/app/reports
+      - ./baseline:/app/baseline   # so --update-baseline writes back to your repo
+    depends_on:
+      model-pull:
+        condition: service_completed_successfully
+
+volumes:
+  ollama-models:

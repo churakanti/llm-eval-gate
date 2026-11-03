@@ -1,0 +1,6 @@
+Read this customer message and tell me what kind of ticket it is and how important it is.
+
+$subject
+$description
+
+Answer in JSON with "category" and "priority".
